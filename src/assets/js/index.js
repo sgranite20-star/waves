@@ -1154,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         splitPair.right = null;
         isPickingSplitTab = false;
 
-        dom.iframeContainer.innerHTML = '';
+        dom.iframeContainer.innerHTML = '<div id="iframe-resize-divider"></div>';
         document.body.classList.remove('split-view', 'is-picking-split', 'is-resizing');
 
         addTab(null, 'new tab');
