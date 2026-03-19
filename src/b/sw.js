@@ -32,19 +32,26 @@ const DOWNLOAD_EXTENSIONS = new Set([
 
 const MAX_RUNTIME_ENTRIES = 300;
 
+let isTrimming = false;
+
 async function trimCache(cacheName, maxEntries) {
+  if (isTrimming) return;
+  isTrimming = true;
   try {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
     if (keys.length > maxEntries) {
       await Promise.all(keys.slice(0, keys.length - maxEntries).map(k => cache.delete(k)));
     }
-  } catch (e) { }
+  } catch (e) { } finally {
+    isTrimming = false;
+  }
 }
 
 let scramjet;
 let uv;
 let scramjetConfigLoaded = false;
+let scramjetConfigPromise = null;
 
 
 self.__MOCHI_BASE__ = self.__MOCHI_BASE__ || self.MOCHI_BASE || null;
@@ -318,6 +325,7 @@ const META_SCRIPT = `
       const rawFavicon=collectFavicon();
       const decodedFavicon=rawFavicon ? decodeProxiedUrl(rawFavicon) : null;
       
+      if (lastUrl === url && lastTitle === title && lastFavicon === rawFavicon) return;
       lastUrl=url;
       lastTitle=title;
       lastFavicon=rawFavicon;
@@ -799,7 +807,10 @@ async function fetchAndParseLists() {
 
         if (text) {
           const lines = text.split('\n');
+          let count = 0;
           for (let line of lines) {
+            count++;
+            if (count % 10000 === 0) await new Promise(r => setTimeout(r, 1));
             let clean = line.split('#')[0].trim();
             if (!clean) continue;
             
@@ -978,8 +989,12 @@ self.addEventListener("fetch", (event) => {
 
       if (isScramjet) {
         if (!scramjetConfigLoaded) {
-          await scramjet.loadConfig();
-          scramjetConfigLoaded = true;
+          if (!scramjetConfigPromise) {
+            scramjetConfigPromise = scramjet.loadConfig().then(() => {
+              scramjetConfigLoaded = true;
+            });
+          }
+          await scramjetConfigPromise;
         }
 
         if (url.pathname.startsWith('/b/s/jetty.') && !url.pathname.endsWith('.wasm')) {
@@ -1012,7 +1027,7 @@ self.addEventListener("fetch", (event) => {
 
         if (request.destination === 'document' || path === '/' || path.endsWith('.html')) {
           const cached = await caches.match(request);
-          const networkPromise = (preloadResponse || fetch(request)).then(res => {
+          const networkPromise = Promise.resolve(preloadResponse).then(res => res || fetch(request)).then(res => {
             if (res && res.ok) {
               const clone = res.clone();
               caches.open(SHELL_CACHE).then(c => c.put(request, clone));

@@ -456,6 +456,10 @@ export class CloudSync {
 
         const updateEl = (el) => {
             if (!el) return;
+            if (this._lastStatusText === text && this._lastStatusType === type) return;
+            this._lastStatusText = text;
+            this._lastStatusType = type;
+
             if (type === 'loading') {
                 el.innerHTML = `<i class="fa-solid fa-rotate" style="color: var(--text-white);"></i> ${text}`;
             } else if (type === 'error') {

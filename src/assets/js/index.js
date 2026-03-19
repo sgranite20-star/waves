@@ -1033,8 +1033,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeSplitResize() {
         const handleWidth = 10;
 
+        let cachedContainerRect = null;
         const onMouseMove = (e) => {
-            const containerRect = dom.iframeContainer.getBoundingClientRect();
+            if (!cachedContainerRect) cachedContainerRect = dom.iframeContainer.getBoundingClientRect();
+            const containerRect = cachedContainerRect;
             if (!containerRect) return;
 
             let newLeftWidth = e.clientX - containerRect.left;
@@ -1054,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const onMouseUp = () => {
+            cachedContainerRect = null;
             document.body.classList.remove('is-resizing');
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);

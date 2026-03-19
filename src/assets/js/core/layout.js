@@ -240,6 +240,7 @@ export function initializeFall() {
             const img = document.createElement('img');
             img.className = 'falling';
             img.style.display = 'none';
+            img.src = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
             img.addEventListener('animationend', () => {
                 img.style.display = 'none';
                 img.style.animationName = 'none';
@@ -258,8 +259,6 @@ export function initializeFall() {
             }
 
             if (!img) return;
-
-            img.src = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
 
             const duration = Math.random() * 5 + 10;
             const spreadWidth = 800;

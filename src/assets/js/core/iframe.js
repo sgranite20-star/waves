@@ -328,7 +328,11 @@ export function updateHistoryUI(activeTab, { currentUrl, canGoBack, canGoForward
     }
 
     if (dom.searchInputNav) {
-        const displayUrl = iframe.dataset.manualUrl || currentUrl || iframe.src;
+        let displayUrl = currentUrl;
+        if (displayUrl === undefined || displayUrl === null) {
+            displayUrl = iframe.dataset.manualUrl || iframe.src;
+        }
+
         const decoded = decodeUrl(displayUrl);
         let displayText = decoded;
 
@@ -348,12 +352,17 @@ export function updateHistoryUI(activeTab, { currentUrl, canGoBack, canGoForward
             const real = (decoded || '').trim().toLowerCase();
             const hasProtocol = /^[a-z]+:\/\//i.test(real);
 
+            let newClass = '';
             if (!real || real === 'about:blank' || !hasProtocol) {
-                dom.lockIcon.className = 'fa-regular fa-magnifying-glass';
+                newClass = 'fa-regular fa-magnifying-glass';
             } else if (real.startsWith('https://')) {
-                dom.lockIcon.className = 'fa-regular fa-lock-keyhole';
+                newClass = 'fa-regular fa-lock-keyhole';
             } else {
-                dom.lockIcon.className = 'fa-regular fa-unlock-keyhole';
+                newClass = 'fa-regular fa-unlock-keyhole';
+            }
+
+            if (dom.lockIcon.className !== newClass) {
+                dom.lockIcon.className = newClass;
             }
         }
     }

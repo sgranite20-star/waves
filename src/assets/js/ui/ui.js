@@ -62,7 +62,6 @@ function initializeEruda(getActiveTab) {
     }
     ew.eruda.init();
     ew.eruda.show();
-    erudaLoaded = true;
   } catch (err) {
     console.error('error initializing eruda:', err);
   }
@@ -70,19 +69,21 @@ function initializeEruda(getActiveTab) {
 
 function toggleEruda(getActiveTab) {
   const activeTab = getActiveTab();
-  if (!activeTab || !activeTab.iframe) {
+  if (!activeTab || !activeTab.iframe || !activeTab.iframe.contentWindow) {
     return;
   }
-  const iframe = activeTab.iframe;
 
-  if (!iframe.contentWindow) {
-    return;
-  }
+  const iframe = activeTab.iframe;
   try {
-    if (erudaLoaded && iframe.contentWindow.eruda) {
-      iframe.contentWindow.eruda.destroy();
-      erudaLoaded = false;
+    const isErudaActive = iframe.dataset.erudaActive === 'true';
+
+    if (isErudaActive && iframe.contentWindow.eruda) {
+      if (typeof iframe.contentWindow.eruda.destroy === 'function') {
+        iframe.contentWindow.eruda.destroy();
+      }
+      iframe.dataset.erudaActive = 'false';
     } else {
+      iframe.dataset.erudaActive = 'true';
       injectEruda(getActiveTab);
     }
   } catch (err) {
@@ -262,24 +263,19 @@ function setupOnekoAnimation() {
       [-2, -1]
     ];
     let currentFrameIndex = 0;
-    let lastUpdate = 0;
-    const interval = 400;
+    
+    const initialSprite = sleepingSpriteFrames[0];
+    onekoEl.style.backgroundPosition = `${initialSprite[0] * 32}px ${initialSprite[1] * 32}px`;
+    currentFrameIndex++;
 
-    const animate = (timestamp) => {
+    setInterval(() => {
       if (!onekoEl.isConnected) return;
-
-      if (onekoEl.offsetParent !== null) {
-        if (timestamp - lastUpdate >= interval) {
-          const sprite = sleepingSpriteFrames[currentFrameIndex % sleepingSpriteFrames.length];
-          onekoEl.style.backgroundPosition = `${sprite[0] * 32}px ${sprite[1] * 32}px`;
-          currentFrameIndex++;
-          lastUpdate = timestamp;
-        }
-      }
-      requestAnimationFrame(animate);
-    };
-
-    requestAnimationFrame(animate);
+      if (onekoEl.style.display === 'none') return;
+      
+      const sprite = sleepingSpriteFrames[currentFrameIndex % sleepingSpriteFrames.length];
+      onekoEl.style.backgroundPosition = `${sprite[0] * 32}px ${sprite[1] * 32}px`;
+      currentFrameIndex++;
+    }, 400);
   }
 }
 
