@@ -12,11 +12,11 @@ while true; do
             break
             ;;
         cancel)
-            echo "setup aborted!"
+            echo "setup aborted."
             exit 0
             ;;
         *)
-            echo "please type 'ok' or 'cancel'!"
+            echo "please type 'ok' or 'cancel'."
             ;;
     esac
 done
@@ -167,11 +167,22 @@ if sudo docker ps -a | grep -q "anubis"; then
     sudo docker rm anubis 2>/dev/null || true
 fi
 
+cat <<'EOF' | sudo tee /etc/anubis-policy.yaml
+bots:
+  - name: pass-b-cdn
+    headers_regex:
+      Host: ".*\\.b-cdn\\.net.*"
+    action: ALLOW
+  - import: (data)/meta/default-config.yaml
+EOF
+
 sudo docker run -d --name anubis \
     --network="host" \
     --restart unless-stopped \
     -e TARGET="http://127.0.0.1:3000" \
     -e OG_PASSTHROUGH="true" \
+    -e POLICY_FNAME=/botPolicies.yaml \
+    -v /etc/anubis-policy.yaml:/botPolicies.yaml \
     ghcr.io/techarohq/anubis:latest
 
 bun run build
@@ -363,7 +374,6 @@ block_tcp_hosts = []
 allow_udp_hosts = []
 block_udp_hosts = []
 allow_hosts = []
-block_hosts = []
 allow_ports = []
 block_ports = []
 EOF
