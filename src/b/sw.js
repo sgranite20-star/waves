@@ -739,8 +739,188 @@ self.addEventListener('activate', event => {
   );
 });
 
+const ADBLOCK_LISTS = [
+  '/!!/https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/pro.txt',
+  '/!!/https://pgl.yoyo.org/adservers/serverlist.php?hostformat=nohtml&showintro=0&mimetype=plaintext',
+  '/!!/https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt',
+  '/!!/https://s3.amazonaws.com/lists.disconnect.me/simple_tracking.txt'
+];
+
+let adblockDomains = new Set();
+let isAdblockReady = false;
+let adblockInitPromise = null;
+
+async function fetchAndParseLists() {
+  try {
+    const listCache = await caches.open('waves-adblock-v1');
+    const newDomains = new Set();
+    const fallbacks = ['doubleclick.net', 'google-analytics.com'];
+    for(const d of fallbacks) newDomains.add(d);
+
+    for (const url of ADBLOCK_LISTS) {
+      try {
+        let text = '';
+        let cached = await listCache.match(url);
+        
+        let shouldFetch = false;
+        if (!cached) {
+            shouldFetch = true;
+        } else {
+            const dateStr = cached.headers.get('date');
+            if (dateStr) {
+                const age = Date.now() - new Date(dateStr).getTime();
+                if (age > 86400000) shouldFetch = true;
+            } else {
+                shouldFetch = true;
+            }
+        }
+
+        if (shouldFetch) {
+            try {
+                const ctrl = new AbortController();
+                const timeoutId = setTimeout(() => ctrl.abort(), 3000);
+                const res = await fetch(url, { signal: ctrl.signal });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    text = await res.text();
+                    listCache.put(url, new Response(text, {
+                       headers: { 'date': new Date().toUTCString(), 'content-type': 'text/plain' }
+                    }));
+                } else if (cached) {
+                    text = await cached.text();
+                }
+            } catch(e) {
+                if (cached) text = await cached.text();
+            }
+        } else {
+            text = await cached.text();
+        }
+
+        if (text) {
+          const lines = text.split('\n');
+          for (let line of lines) {
+            let clean = line.split('#')[0].trim();
+            if (!clean) continue;
+            
+            if (clean.startsWith('0.0.0.0 ') || clean.startsWith('127.0.0.1 ')) {
+              const parts = clean.split(/\s+/);
+              if (parts.length > 1 && parts[1] !== '0.0.0.0' && parts[1] !== 'localhost') {
+                newDomains.add(parts[1].toLowerCase());
+              }
+            } else if (!clean.includes(' ') && clean.includes('.')) {
+              newDomains.add(clean.toLowerCase());
+            }
+          }
+        }
+      } catch (err) { }
+    }
+    
+    adblockDomains = newDomains;
+    isAdblockReady = true;
+  } catch (globalErr) {}
+}
+
+function ensureAdblock() {
+  if (isAdblockReady) return Promise.resolve();
+  if (!adblockInitPromise) {
+    adblockInitPromise = fetchAndParseLists();
+  }
+  return adblockInitPromise;
+}
+
+ensureAdblock();
+
+const _AD_MK2 = 'q7Zx!9pL';
+const _adXorDec = (s) => {
+    let o = '';
+    for (let i = 0; i < s.length; i++) {
+        o += String.fromCharCode(s.charCodeAt(i) ^ _AD_MK2.charCodeAt(i % _AD_MK2.length));
+    }
+    return o;
+};
+
+const ADBLOCK_KEYWORDS = [
+  '/ads/', '/adserver/', '/adtracking/', '-ad-track.', '/analytics.js', '/tracking.js', '/pixel.js',
+  '/gpt.js', '/prebid.js', '/ads.min.js', '/ad-script.js', '/tracker.js', '/beacon.js', '/events.js',
+  '/gtm.js', '/fbevents.js', '/insight.min.js', '/beacon.min.js', 'banner_ad', 'google_ads',
+  '/pagead/', '/ad/g/cors', 'pagead2.googlesyndication.com', 'doubleclick.net', 'adsystem.com',
+  'yandex.ru/metrika', 'vk.com/rtrg', 'clarity.ms', 'tracking/pixel', '/track/event'
+];
+
+function getAdblockTargetUrl(requestUrl) {
+    try {
+        const u = new URL(requestUrl);
+        if (u.origin !== self.location.origin) return u.href;
+
+        if (u.pathname.startsWith(MOCHI_PREFIX)) {
+            let encodedPart = u.pathname.slice(MOCHI_PREFIX.length);
+            if (encodedPart.endsWith('/')) encodedPart = encodedPart.slice(0, -1);
+            try {
+                let p = encodedPart.replace(/-/g, '+').replace(/_/g, '/');
+                while (p.length % 4) { p += '='; }
+                let raw = atob(p);
+                let dec = _adXorDec(raw);
+                let result = decodeURIComponent(dec);
+                if (result.startsWith('http')) return result;
+            } catch(e) {}
+            if (encodedPart.startsWith('http')) return encodedPart;
+        }
+
+        if (typeof isScramjet !== 'undefined' && isScramjet && u.pathname.startsWith('/b/s/')) {
+            const raw = u.pathname.slice(5) + u.search;
+            const httpIndex = raw.indexOf('http');
+            if (httpIndex !== -1) {
+                const candidate = raw.substring(httpIndex);
+                try { return decodeURIComponent(candidate); } catch(e) { return candidate; }
+            }
+        }
+
+        if (typeof isUltraviolet !== 'undefined' && isUltraviolet && self.__uv$config && typeof self.__uv$config.decodeUrl === 'function') {
+            const prefix = self.__uv$config.prefix || '/b/u/hi/';
+            if (u.pathname.startsWith(prefix)) {
+                try { return self.__uv$config.decodeUrl(u.pathname.slice(prefix.length)); } catch(e) {}
+            }
+        }
+    } catch(e) {}
+    return requestUrl;
+}
+
+function isBlockedUrl(candidate, isNavigate) {
+  if (!isAdblockReady) return false;
+  if (!candidate) return false;
+  try {
+    const candidateUrl = new URL(candidate);
+    const host = candidateUrl.hostname.toLowerCase();
+    
+    let parts = host.split('.');
+    for (let i = 0; i < parts.length - 1; i++) {
+        if (adblockDomains.has(parts.slice(i).join('.'))) return true;
+    }
+    
+    if (host === self.location.hostname) return false;
+
+    if (!isNavigate) {
+        const pathInfo = (candidateUrl.pathname + candidateUrl.search).toLowerCase();
+        for (const kw of ADBLOCK_KEYWORDS) {
+            if (pathInfo.includes(kw)) return true;
+        }
+    }
+    
+    return false;
+  } catch(e) {
+    return false;
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+  const isNavigate = request.mode === 'navigate' || request.destination === 'document';
+  
+  if (isBlockedUrl(getAdblockTargetUrl(request.url), isNavigate)) {
+    return event.respondWith(new Response(':3', { status: 451, statusText: ':3' }));
+  }
+
   const preloadResponse = event.preloadResponse || null;
   const url = new URL(request.url);
   const realUrl = resolveRealUrl(url);
@@ -867,7 +1047,7 @@ self.addEventListener("fetch", (event) => {
         return await fetch(request);
       }
 
-      return new Response("no", { status: 403 });
+      return new Response(":3", { status: 403 });
 
     } catch (err) {
       if (realUrl && !realUrl.includes(self.location.host)) {

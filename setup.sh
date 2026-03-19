@@ -169,9 +169,29 @@ fi
 
 cat <<'EOF' | sudo tee /etc/anubis-policy.yaml
 bots:
-  - name: pass-b-cdn
+  - name: pass-bunny-via
     headers_regex:
-      Host: ".*\\.b-cdn\\.net.*"
+      Via: "(?i).*bunnycdn.*"
+    action: ALLOW
+  - name: pass-bunny-server
+    headers_regex:
+      Cdn-Serverid: ".*"
+    action: ALLOW
+  - name: pass-bunny-country
+    headers_regex:
+      Cdn-Requestcountrycode: ".*"
+    action: ALLOW
+  - name: pass-bunny-loop
+    headers_regex:
+      Cdn-Loop: "(?i).*bunnycdn.*"
+    action: ALLOW
+  - name: pass-b-cdn-xfh
+    headers_regex:
+      X-Forwarded-Host: "(?i).*\\.b-cdn\\.net.*"
+    action: ALLOW
+  - name: pass-b-cdn-referer
+    headers_regex:
+      Referer: "(?i).*\\.b-cdn\\.net.*"
     action: ALLOW
   - import: (data)/meta/default-config.yaml
 EOF
@@ -374,6 +394,7 @@ block_tcp_hosts = []
 allow_udp_hosts = []
 block_udp_hosts = []
 allow_hosts = []
+block_hosts = []
 allow_ports = []
 block_ports = []
 EOF
