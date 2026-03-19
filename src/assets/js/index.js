@@ -4,7 +4,6 @@ import { initializeUI, hideLoading, removeIframeLoading, showHomeView, showBrows
 import { initializeIframe, updateHistoryUI, cleanupIframe, reduceIframeMemory, restoreIframeActivity } from './core/iframe.js';
 import { initializeSearch, handleSearch as performSearch } from './search/search.js';
 import { initializeBookmarks } from './features/bookmarks.js';
-import { initializeNotifications } from './features/notifications.js';
 import { initializeLayout, initializeFall } from './core/layout.js';
 import { initializeLoad } from './core/load.js';
 import { initializeGame } from './features/games.js';
@@ -1185,7 +1184,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeUI(getActiveTab);
     initializeSearch(getActiveTab);
     initializeBookmarks();
-    initializeNotifications();
     initializeSplitResize();
 
     if (dom.splitViewBtn) {

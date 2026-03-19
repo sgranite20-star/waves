@@ -112,8 +112,8 @@
 .transport-selector,
 .search-engine-selector,
 .backend-selector,
-.decoy-selector,
-.cloak-link-selector,
+.site-cloaking-selector,
+.link-cloaking-selector,
 .game-source-selector,
 .theme-selector {
   position: relative;
@@ -127,8 +127,8 @@
 .transport-selected,
 .search-engine-selected,
 .backend-selected,
-.decoy-selected,
-.cloak-link-selected,
+.site-cloaking-selected,
+.link-cloaking-selected,
 .game-source-selected,
 .theme-selected {
   background-color: var(--bg-surface-7);
@@ -146,8 +146,8 @@
 .transport-selected:hover,
 .search-engine-selected:hover,
 .backend-selected:hover,
-.decoy-selected:hover,
-.cloak-link-selected:hover,
+.site-cloaking-selected:hover,
+.link-cloaking-selected:hover,
 .game-source-selected:hover,
 .theme-selected:hover {
   background-color: var(--bg-surface-active);
@@ -156,8 +156,8 @@
 .transport-selected::after,
 .search-engine-selected::after,
 .backend-selected::after,
-.decoy-selected::after,
-.cloak-link-selected::after,
+.site-cloaking-selected::after,
+.link-cloaking-selected::after,
 .game-source-selected::after,
 .theme-selected::after {
   content: "\f107";
@@ -171,8 +171,8 @@
 .transport-selected.transport-arrow-active::after,
 .search-engine-selected.search-engine-arrow-active::after,
 .backend-selected.backend-arrow-active::after,
-.decoy-selected.decoy-arrow-active::after,
-.cloak-link-selected.cloak-link-arrow-active::after,
+.site-cloaking-selected.site-cloaking-arrow-active::after,
+.link-cloaking-selected.link-cloaking-arrow-active::after,
 .game-source-selected.game-source-arrow-active::after,
 .theme-selected.theme-arrow-active::after {
   transform: rotate(180deg);
@@ -181,8 +181,8 @@
 .transport-options,
 .search-engine-options,
 .backend-options,
-.decoy-options,
-.cloak-link-options,
+.site-cloaking-options,
+.link-cloaking-options,
 .game-source-options,
 .theme-options {
   position: absolute;
@@ -208,8 +208,8 @@
 .transport-options.transport-show,
 .search-engine-options.search-engine-show,
 .backend-options.backend-show,
-.decoy-options.decoy-show,
-.cloak-link-options.cloak-link-show,
+.site-cloaking-options.site-cloaking-show,
+.link-cloaking-options.link-cloaking-show,
 .game-source-options.game-source-show,
 .theme-options.theme-show {
   max-height: 400px;
@@ -221,8 +221,8 @@
 .transport-options div,
 .search-engine-options div,
 .backend-options div,
-.decoy-options div,
-.cloak-link-options div,
+.site-cloaking-options div,
+.link-cloaking-options div,
 .game-source-options div,
 .theme-options div {
   padding: 7px;
@@ -236,8 +236,8 @@
 .transport-options div:hover,
 .search-engine-options div:hover,
 .backend-options div:hover,
-.decoy-options div:hover,
-.cloak-link-options div:hover,
+.site-cloaking-options div:hover,
+.link-cloaking-options div:hover,
 .game-source-options div:hover,
 .theme-options div:hover {
   background-color: var(--bg-surface-active);
@@ -453,8 +453,8 @@ input[type="checkbox"]:checked:hover::before {
 .settings-item .transport-selector,
 .settings-item .search-engine-selector,
 .settings-item .backend-selector,
-.settings-item .decoy-selector,
-.settings-item .cloak-link-selector,
+.settings-item .site-cloaking-selector,
+.settings-item .link-cloaking-selector,
 .settings-item .game-source-selector,
 .settings-item .theme-selector {
   margin-bottom: 0;

@@ -52,8 +52,7 @@ async fn main() {
         aes_cipher,
     });
 
-
-    WRITE_SEMAPHORE.get_or_init(|| tokio::sync::Semaphore::new(5));
+    WRITE_SEMAPHORE.get_or_init(|| tokio::sync::Semaphore::new(20));
 
     let strict_conf = Box::new(
         GovernorConfigBuilder::default()
@@ -140,7 +139,7 @@ async fn main() {
         .layer(SetResponseHeaderLayer::overriding(X_FRAME_OPTIONS, HeaderValue::from_static("DENY")))
         .layer(SetResponseHeaderLayer::overriding(X_XSS_PROTECTION, HeaderValue::from_static("1; mode=block")))
         .layer(SetResponseHeaderLayer::overriding(REFERRER_POLICY, HeaderValue::from_static("strict-origin-when-cross-origin")))
-        .layer(DefaultBodyLimit::max(50 * 1024 * 1024));
+        .layer(DefaultBodyLimit::max(80 * 1024 * 1024));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 5000));
     tracing::info!("listening on {}!!", addr);

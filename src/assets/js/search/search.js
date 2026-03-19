@@ -2,6 +2,7 @@ import { dom } from '../ui/dom.js';
 import { BANGS, SEARCH_ENGINES } from '../core/config.js';
 import { showBrowserView } from '../ui/ui.js';
 import { navigateIframeTo, updateHistoryUI } from '../core/iframe.js';
+import { getProxyUrl } from '../core/utils.js';
 
 function isBangQuery(query) { return query.trim().startsWith('!'); }
 
@@ -71,7 +72,7 @@ export async function handleSearch(query, activeTab, gameName) {
         if (!processedURL.includes('?') && !processedURL.split('/').pop().includes('.')) {
             processedURL = processedURL.endsWith('/') ? processedURL + 'index.html' : processedURL + '/index.html';
         }
-        navigateIframeTo(activeTab.iframe, '/!!/' + processedURL);
+        navigateIframeTo(activeTab.iframe, getProxyUrl(processedURL));
     } else {
         const finalUrlToLoad = searchURL.includes('/assets/gs/')
             ? new URL(searchURL, window.location.origin).href

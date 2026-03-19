@@ -419,7 +419,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const originalFavicon = document.querySelector("link[rel*='icon']") ? document.querySelector("link[rel*='icon']").href : 'logo.png';
     let titleObserver = null;
 
-    const decoyPresets = {
+    const siteCloakingPresets = {
+        'none': {
+            title: 'waves!!',
+            icon: '/assets/images/icons/favicon.ico'
+        },
         'google': {
             title: 'Google',
             icon: 'https://www.google.com/favicon.ico'
@@ -454,51 +458,104 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    function applyInitialDecoy(decoyName) {
-        const preset = decoyPresets[decoyName];
-        const titleTag = document.querySelector('title');
+    let focusCloakingEnabled = localStorage.getItem('focusCloaking') !== 'false';
+    let expectedTitle = originalTitle;
+    let isUnloading = false;
 
-        const existingFavicons = document.querySelectorAll("link[rel*='icon']");
-        existingFavicons.forEach(el => el.remove());
-
-        const favicon = document.createElement('link');
-        favicon.rel = 'shortcut icon';
-        document.head.appendChild(favicon);
-
-        if (titleObserver) {
-            titleObserver.disconnect();
-            titleObserver = null;
+    function applyExpectedTitleAndIcon(titleToSet, iconToSet) {
+        expectedTitle = titleToSet;
+        if (document.title !== titleToSet) {
+            document.title = titleToSet;
         }
 
-        if (decoyName === 'default' || !preset) {
-            document.title = originalTitle;
-            favicon.href = originalFavicon;
+        let favicons = document.querySelectorAll("link[rel*='icon']");
+        if (favicons.length === 0) {
+            let favicon = document.createElement('link');
+            favicon.rel = 'shortcut icon';
+            favicon.href = iconToSet;
+            document.head.appendChild(favicon);
         } else {
-            document.title = preset.title;
-            favicon.href = preset.icon;
-
-            if (titleTag) {
-                titleObserver = new MutationObserver(function (mutations) {
-                    if (document.title !== preset.title) {
-                        titleObserver.disconnect();
-                        document.title = preset.title;
-                        titleObserver.observe(titleTag, {
-                            childList: true,
-                            subtree: true,
-                            characterData: true
-                        });
-                    }
-                });
-                titleObserver.observe(titleTag, {
-                    childList: true,
-                    subtree: true,
-                    characterData: true
-                });
-            }
+            favicons.forEach(el => {
+                if (el.href !== iconToSet) {
+                    el.href = iconToSet;
+                }
+            });
         }
     }
 
-    function executeTabCloak(cloakLink, decoyName) {
+    function updateTitleAndIcon() {
+        const titleTag = document.querySelector('title');
+        let currentSiteCloakingName = localStorage.getItem('siteCloaking') || 'coursera';
+        if (currentSiteCloakingName === 'default') {
+            currentSiteCloakingName = 'coursera';
+            localStorage.setItem('siteCloaking', 'coursera');
+        }
+
+        let titleToSet = originalTitle;
+        let iconToSet = originalFavicon;
+        
+        let isTabActive = !isUnloading && !document.hidden && document.hasFocus();
+
+        if (focusCloakingEnabled && isTabActive) {
+            titleToSet = 'waves!!';
+            iconToSet = '/assets/images/icons/favicon.ico';
+        } else {
+            const preset = siteCloakingPresets[currentSiteCloakingName];
+            if (currentSiteCloakingName === 'coursera' || (!preset && currentSiteCloakingName !== 'none')) {
+                titleToSet = originalTitle;
+                iconToSet = originalFavicon;
+            } else if (preset) {
+                titleToSet = preset.title;
+                iconToSet = preset.icon;
+            }
+        }
+
+        applyExpectedTitleAndIcon(titleToSet, iconToSet);
+    }
+
+    const titleTag = document.querySelector('title');
+    if (titleTag && !titleObserver) {
+        titleObserver = new MutationObserver(function (mutations) {
+            if (document.title !== expectedTitle) {
+                document.title = expectedTitle;
+            }
+        });
+        titleObserver.observe(titleTag, {
+            childList: true,
+            subtree: true,
+            characterData: true
+        });
+    }
+
+    function applyInitialSiteCloaking(siteCloakingName) {
+        if (siteCloakingName) {
+            localStorage.setItem('siteCloaking', siteCloakingName === 'default' ? 'coursera' : siteCloakingName);
+        }
+        updateTitleAndIcon();
+    }
+
+    window.addEventListener('focus', () => {
+        setTimeout(updateTitleAndIcon, 10);
+    });
+
+    window.addEventListener('blur', () => {
+        setTimeout(updateTitleAndIcon, 10);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            updateTitleAndIcon();
+        } else {
+            setTimeout(updateTitleAndIcon, 10);
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        isUnloading = true;
+        updateTitleAndIcon();
+    });
+
+    function executeTabCloak(linkCloaking, siteCloakingName) {
         let inFrame;
         try {
             inFrame = window !== top;
@@ -506,24 +563,24 @@ document.addEventListener('DOMContentLoaded', function () {
             inFrame = true;
         }
 
-        if (cloakLink.toLowerCase() === 'none' || inFrame) return;
+        if (linkCloaking.toLowerCase() === 'none' || inFrame) return;
 
-        const preset = decoyPresets[decoyName];
+        const preset = siteCloakingPresets[siteCloakingName];
 
         let title;
         let icon;
 
-        if (decoyName !== 'default' && preset) {
+        if (siteCloakingName !== 'coursera' && preset) {
             title = preset.title;
             icon = preset.icon;
         } else {
-            title = localStorage.getItem("siteTitle") || "Google";
-            icon = localStorage.getItem("faviconURL") || "https://www.google.com/favicon.ico";
+            title = localStorage.getItem("siteTitle") || originalTitle;
+            icon = localStorage.getItem("faviconURL") || originalFavicon;
         }
 
         let popup;
 
-        if (cloakLink === 'about:blank') {
+        if (linkCloaking === 'about:blank') {
             popup = window.open("", "_blank");
             if (!popup || popup.closed) {
                 return;
@@ -541,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
             iframe.src = window.location.origin;
             doc.body.appendChild(iframe);
 
-        } else if (cloakLink === 'blob:') {
+        } else if (linkCloaking === 'blob:') {
             const iframeSrc = window.location.origin;
             const safeTitle = title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
             const safeIcon = icon.replace(/"/g, '&quot;');
@@ -562,15 +619,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    function runInitialCloak(cloakLinkValue) {
-        const decoyName = localStorage.getItem('decoy') || 'default';
-        executeTabCloak(cloakLinkValue, decoyName);
+    function runInitialCloak(linkCloakingValue) {
+        let siteCloakingName = localStorage.getItem('siteCloaking') || 'coursera';
+        if (siteCloakingName === 'default') siteCloakingName = 'coursera';
+        executeTabCloak(linkCloakingValue, siteCloakingName);
     }
 
-    const initialDecoy = localStorage.getItem('decoy') || 'default';
-    const initialCloakLink = localStorage.getItem('cloakLink') || 'none';
+    let initialSiteCloaking = localStorage.getItem('siteCloaking') || 'coursera';
+    if (initialSiteCloaking === 'default') {
+        initialSiteCloaking = 'coursera';
+        localStorage.setItem('siteCloaking', 'coursera');
+    }
+    const initialLinkCloaking = localStorage.getItem('linkCloaking') || 'none';
 
-    applyInitialDecoy(initialDecoy);
+    applyInitialSiteCloaking(initialSiteCloaking);
 
     const savedTheme = localStorage.getItem('theme') || 'default';
     if (savedTheme && savedTheme !== 'default') {
@@ -579,7 +641,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.documentElement.removeAttribute('data-theme');
     }
 
-    window.addEventListener("load", () => runInitialCloak(initialCloakLink));
+    window.addEventListener("load", () => runInitialCloak(initialLinkCloaking));
 
     let settingsInitialized = false;
 
@@ -634,20 +696,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const appSettings = {
             backend: localStorage.getItem('backend') || 'scramjet',
             transport: localStorage.getItem('transport') || 'epoxy',
-            cloakLink: localStorage.getItem('cloakLink') || 'none',
-            decoy: localStorage.getItem('decoy') || 'default',
+            linkCloaking: localStorage.getItem('linkCloaking') || 'none',
+            siteCloaking: localStorage.getItem('siteCloaking') === 'default' ? 'coursera' : (localStorage.getItem('siteCloaking') || 'coursera'),
             searchEngine: localStorage.getItem('searchEngine') || 'duckduckgo',
             gameSource: localStorage.getItem('gameSource') || 'gn-math',
             theme: localStorage.getItem('theme') || 'default',
             preventClosing: localStorage.getItem('preventClosing') !== 'false',
-            fallEnabled: localStorage.getItem('fallEnabled') !== 'false'
+            fallEnabled: localStorage.getItem('fallEnabled') !== 'false',
+            focusCloaking: localStorage.getItem('focusCloaking') !== 'false'
         };
 
         let isToggling = false;
 
-        if (appSettings.cloakLink.toLowerCase() === 'none') {
-            appSettings.cloakLink = 'none';
-            localStorage.setItem('cloakLink', 'none');
+        if (appSettings.linkCloaking.toLowerCase() === 'none') {
+            appSettings.linkCloaking = 'none';
+            localStorage.setItem('linkCloaking', 'none');
         }
 
         settingsMenu.innerHTML = `
@@ -712,20 +775,25 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <div id="cloaking-content" class="tab-content">
                         <div class="settings-item">
-                            <label>decoy</label>
-                            <p>cloak the current site title and favicon as a different site.</p>
-                            <div class="decoy-selector">
-                                <div class="decoy-selected"></div>
-                                <div class="decoy-options"></div>
+                            <label>site cloaking</label>
+                            <p>cloak the site title and favicon as a different site.</p>
+                            <div class="site-cloaking-selector">
+                                <div class="site-cloaking-selected"></div>
+                                <div class="site-cloaking-options"></div>
                             </div>
                         </div>
                         <div class="settings-item">
-                            <label>cloak link</label>
+                            <label>link cloaking</label>
                             <p>cloak the site link in the url bar.</p>
-                            <div class="cloak-link-selector">
-                                <div class="cloak-link-selected"></div>
-                                <div class="cloak-link-options"></div>
+                            <div class="link-cloaking-selector">
+                                <div class="link-cloaking-selected"></div>
+                                <div class="link-cloaking-options"></div>
                             </div>
+                        </div>
+                        <div class="settings-item">
+                            <label>focus cloaking</label>
+                            <p>cloak the title and favicon when clicking off the tab.</p>
+                            <input type="checkbox" id="focus-cloaking-toggle">
                         </div>
                     </div>
                     <div id="advanced-content" class="tab-content">
@@ -776,6 +844,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const closeSettingsBtn = document.getElementById('close-settings-menu');
         const preventClosingToggle = document.getElementById('prevent-closing-toggle');
+        const focusCloakingToggle = document.getElementById('focus-cloaking-toggle');
         const exportDataBtn = document.getElementById('export-data-btn');
         const importDataBtn = document.getElementById('import-data-btn');
         const backendSelector = document.querySelector('.backend-selector');
@@ -787,12 +856,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const searchEngineSelector = document.querySelector('.search-engine-selector');
         const searchEngineSelected = searchEngineSelector.querySelector('.search-engine-selected');
         const searchEngineOptions = searchEngineSelector.querySelector('.search-engine-options');
-        const decoySelector = document.querySelector('.decoy-selector');
-        const decoySelected = decoySelector.querySelector('.decoy-selected');
-        const decoyOptions = decoySelector.querySelector('.decoy-options');
-        const cloakLinkSelector = document.querySelector('.cloak-link-selector');
-        const cloakLinkSelected = cloakLinkSelector.querySelector('.cloak-link-selected');
-        const cloakLinkOptions = cloakLinkSelector.querySelector('.cloak-link-options');
+        const siteCloakingSelector = document.querySelector('.site-cloaking-selector');
+        const siteCloakingSelected = siteCloakingSelector.querySelector('.site-cloaking-selected');
+        const siteCloakingOptions = siteCloakingSelector.querySelector('.site-cloaking-options');
+        const linkCloakingSelector = document.querySelector('.link-cloaking-selector');
+        const linkCloakingSelected = linkCloakingSelector.querySelector('.link-cloaking-selected');
+        const linkCloakingOptions = linkCloakingSelector.querySelector('.link-cloaking-options');
         const gameSourceSelector = document.querySelector('.game-source-selector');
         const gameSourceSelected = gameSourceSelector.querySelector('.game-source-selected');
         const gameSourceOptions = gameSourceSelector.querySelector('.game-source-options');
@@ -802,8 +871,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const allBackendOptions = ['ultraviolet', 'scramjet'];
         const allTransportOptions = ['epoxy', 'libcurl'];
         const allSearchEngineOptions = ['google', 'bing', 'duckduckgo', 'startpage', 'brave', 'mojeek', 'swisscows'];
-        const allDecoyOptions = ['default', 'google', 'google classroom', 'google docs', 'youtube', 'google drive', 'schoology', 'wikipedia', 'canva'];
-        const allCloakLinkOptions = ['none', 'about:blank', 'blob:'];
+        const allSiteCloakingOptions = ['coursera', 'none', 'google', 'google classroom', 'google docs', 'youtube', 'google drive', 'schoology', 'wikipedia', 'canva'];
+        const allLinkCloakingOptions = ['none', 'about:blank', 'blob:'];
         const allGameSourceOptions = ['gn-math', 'truffled', 'velara', 'squall'];
         const allThemeOptions = ['default', 'catppuccin', 'nord', 'rose pine', 'gruvbox', 'dracula', 'synthwave', 'tokyo night', 'everforest', 'kanagawa', 'solarized', 'sakura'];
 
@@ -857,12 +926,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function runMenuCloak() {
-            executeTabCloak(appSettings.cloakLink, appSettings.decoy);
+            executeTabCloak(appSettings.linkCloaking, appSettings.siteCloaking);
         }
 
         function closeAllSelectors() {
-            document.querySelectorAll('.backend-show, .transport-show, .search-engine-show, .decoy-show, .cloak-link-show, .game-source-show, .theme-show').forEach(el => el.classList.remove('backend-show', 'transport-show', 'search-engine-show', 'decoy-show', 'cloak-link-show', 'game-source-show', 'theme-show'));
-            document.querySelectorAll('.backend-arrow-active, .transport-arrow-active, .search-engine-arrow-active, .decoy-arrow-active, .cloak-link-arrow-active, .game-source-arrow-active, .theme-arrow-active').forEach(el => el.classList.remove('backend-arrow-active', 'transport-arrow-active', 'search-engine-arrow-active', 'decoy-arrow-active', 'cloak-link-arrow-active', 'game-source-arrow-active', 'theme-arrow-active'));
+            document.querySelectorAll('.backend-show, .transport-show, .search-engine-show, .site-cloaking-show, .link-cloaking-show, .game-source-show, .theme-show').forEach(el => el.classList.remove('backend-show', 'transport-show', 'search-engine-show', 'site-cloaking-show', 'link-cloaking-show', 'game-source-show', 'theme-show'));
+            document.querySelectorAll('.backend-arrow-active, .transport-arrow-active, .search-engine-arrow-active, .site-cloaking-arrow-active, .link-cloaking-arrow-active, .game-source-arrow-active, .theme-arrow-active').forEach(el => el.classList.remove('backend-arrow-active', 'transport-arrow-active', 'search-engine-arrow-active', 'site-cloaking-arrow-active', 'link-cloaking-arrow-active', 'game-source-arrow-active', 'theme-arrow-active'));
         }
 
         function changeTab(targetId) {
@@ -935,15 +1004,15 @@ document.addEventListener('DOMContentLoaded', function () {
                                     document.dispatchEvent(new CustomEvent('newTransport', {
                                         detail: storageVal
                                     }));
-                                } else if (storageKey === 'decoy') {
-                                    applyInitialDecoy(storageVal);
+                                } else if (storageKey === 'siteCloaking') {
+                                    applyInitialSiteCloaking(storageVal);
                                 } else if (eventName) {
                                     document.dispatchEvent(new CustomEvent(eventName, {
                                         detail: storageVal
                                     }));
                                 }
 
-                                if (storageKey === 'cloakLink') {
+                                if (storageKey === 'linkCloaking') {
                                     window.bypassPreventClosing = true;
                                     runMenuCloak();
                                 }
@@ -958,21 +1027,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         preventClosingToggle.checked = appSettings.preventClosing;
+        if (focusCloakingToggle) {
+            focusCloakingToggle.checked = appSettings.focusCloaking;
+        }
 
         const fallToggle = document.getElementById('fall-toggle');
         fallToggle.checked = appSettings.fallEnabled;
 
         createSelector('backend', backendSelected, backendOptions, allBackendOptions, appSettings.backend, 'backend');
         createSelector('transport', transportSelected, transportOptions, allTransportOptions, appSettings.transport, 'transport');
-        createSelector('cloak-link', cloakLinkSelected, cloakLinkOptions, allCloakLinkOptions, appSettings.cloakLink, 'cloakLink');
+        createSelector('link-cloaking', linkCloakingSelected, linkCloakingOptions, allLinkCloakingOptions, appSettings.linkCloaking, 'linkCloaking');
         createSelector('search-engine', searchEngineSelected, searchEngineOptions, allSearchEngineOptions, appSettings.searchEngine, 'searchEngine');
-        createSelector('decoy', decoySelected, decoyOptions, allDecoyOptions, appSettings.decoy, 'decoy');
+        createSelector('site-cloaking', siteCloakingSelected, siteCloakingOptions, allSiteCloakingOptions, appSettings.siteCloaking, 'siteCloaking');
         createSelector('game-source', gameSourceSelected, gameSourceOptions, allGameSourceOptions, appSettings.gameSource, 'gameSource');
         createSelector('theme', themeSelected, themeOptionsEl, allThemeOptions, appSettings.theme, 'theme');
 
         closeSettingsBtn.addEventListener('click', window.toggleSettingsMenu);
 
-        document.addEventListener('decoyUpdated', (e) => applyInitialDecoy(e.detail));
+        document.addEventListener('siteCloakingUpdated', (e) => applyInitialSiteCloaking(e.detail));
 
         if (exportDataBtn) {
             exportDataBtn.addEventListener('click', () => {
@@ -1003,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
         window.addEventListener('click', (e) => {
-            if (!e.target.closest('.backend-selector, .transport-selector, .search-engine-selector, .decoy-selector, .cloak-link-selector, .game-source-selector, .theme-selector')) {
+            if (!e.target.closest('.backend-selector, .transport-selector, .search-engine-selector, .site-cloaking-selector, .link-cloaking-selector, .game-source-selector, .theme-selector')) {
                 closeAllSelectors();
             }
         });
@@ -1027,6 +1099,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             window.showToast('success', 'settings saved!');
         });
+
+        if (focusCloakingToggle) {
+            focusCloakingToggle.addEventListener('change', function () {
+                appSettings.focusCloaking = this.checked;
+                localStorage.setItem('focusCloaking', this.checked.toString());
+                focusCloakingEnabled = this.checked;
+                updateTitleAndIcon();
+                window.showToast('success', 'settings saved!');
+            });
+        }
 
         document.querySelectorAll('input[type="checkbox"]').forEach(toggle => {
             toggle.addEventListener('change', function () {

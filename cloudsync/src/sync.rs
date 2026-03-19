@@ -24,7 +24,8 @@ use crate::auth::{get_current_user, AppState};
 
 const IV_LENGTH: usize = 12;
 const MAX_JSON_DEPTH: usize = 120;
-const MAX_RAW_SIZE: usize = 50 * 1024 * 1024;
+const MAX_RAW_SIZE: usize = 80 * 1024 * 1024;
+const MAX_BLOB_SIZE: usize = 80 * 1024 * 1024;
 
 fn check_json_depth(val: &serde_json::Value, depth: usize) -> bool {
     if depth > MAX_JSON_DEPTH {
@@ -93,7 +94,7 @@ pub async fn upload(
     if json_bytes.len() > MAX_RAW_SIZE {
         return (StatusCode::PAYLOAD_TOO_LARGE, Json(SyncResponse { success: false, data: None, updated_at: None, error: Some("payload too large".into()) }));
     }
-    let mut compressor = BrotliEncoder::with_quality(Vec::new(), Level::Precise(4));
+    let mut compressor = BrotliEncoder::with_quality(Vec::new(), Level::Precise(3));
     if let Err(_) = compressor.write_all(&json_bytes).await {
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(SyncResponse { success: false, data: None, updated_at: None, error: Some("compression failed".into()) }));
     }
@@ -119,7 +120,7 @@ pub async fn upload(
         final_blob.extend_from_slice(&iv);
         final_blob.extend_from_slice(&encrypted_data);
 
-        if final_blob.len() > 50 * 1024 * 1024 {
+        if final_blob.len() > MAX_BLOB_SIZE {
             return Err("blob too large");
         }
         let conn = pool.get().map_err(|_| "db pool error")?;

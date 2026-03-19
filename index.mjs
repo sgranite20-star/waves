@@ -81,7 +81,12 @@ function sendCached(res, absPath, cacheControl, extraHeaders) {
 function cachedStatic(root, cacheControl = 'public, max-age=31536000, immutable', opts = {}) {
   return (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-    const relative = decodeURIComponent(req.path).replace(/\\/g, '/');
+    let relative;
+    try {
+      relative = decodeURIComponent(req.path).replace(/\\/g, '/');
+    } catch {
+      return next();
+    }
     if (relative.includes('..')) return next();
     const absPath = path.join(root, relative);
     if (opts.noIndex && relative === '/') return next();
@@ -152,6 +157,8 @@ app.use((req, res, next) => {
     };
 
     const proxyReq = request(options, (proxyRes) => {
+      proxyRes.on('error', () => res.destroy());
+      res.on('error', () => proxyRes.destroy());
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
     });
@@ -159,8 +166,10 @@ app.use((req, res, next) => {
     proxyReq.on('error', (e) => {
       console.error(`mochi forwarding failed: ${e.message}`);
       if (!res.headersSent) res.status(502).send("make sure mochi is running!");
+      else res.destroy();
     });
 
+    req.on('error', () => proxyReq.destroy());
     req.pipe(proxyReq);
   } else if (NODE_ENV === 'development' && (req.url.startsWith('/api/auth') || req.url.startsWith('/api/sync'))) {
     const options = {
@@ -172,6 +181,8 @@ app.use((req, res, next) => {
     };
 
     const proxyReq = request(options, (proxyRes) => {
+      proxyRes.on('error', () => res.destroy());
+      res.on('error', () => proxyRes.destroy());
       res.writeHead(proxyRes.statusCode, proxyRes.headers);
       proxyRes.pipe(res);
     });
@@ -179,8 +190,10 @@ app.use((req, res, next) => {
     proxyReq.on('error', (e) => {
       console.error(`cloudsync forwarding failed: ${e.message}`);
       if (!res.headersSent) res.status(502).send("make sure cloudsync is running!");
+      else res.destroy();
     });
 
+    req.on('error', () => proxyReq.destroy());
     req.pipe(proxyReq);
   } else {
     next();
@@ -244,13 +257,21 @@ if (NODE_ENV === 'production') {
     if (!COMPRESSIBLE.test(req.path)) return next();
     if (req.path.startsWith('/api/') || req.url.startsWith('/!!/') || req.url.startsWith('/!cover!/')) return next();
 
+    let decodedPath;
+    try {
+      decodedPath = decodeURIComponent(req.path).replace(/\\/g, '/');
+    } catch {
+      return next();
+    }
+    if (decodedPath.includes('..')) return next();
+
     const accept = req.headers['accept-encoding'] || '';
     for (const { ext, encoding } of ENCODING_MAP) {
       if (!accept.includes(encoding)) continue;
 
       const candidates = [
-        path.join(srcPath, req.path + ext),
-        path.join(publicPath, req.path + ext)
+        path.join(srcPath, decodedPath + ext),
+        path.join(publicPath, decodedPath + ext)
       ];
 
       for (const filePath of candidates) {
@@ -371,6 +392,7 @@ app.use((_req, res) => {
 });
 
 server.on("upgrade", (req, sock, head) => {
+  sock.on('error', () => { /* ignore */ });
   if (req.url.startsWith("/w/")) {
     sock.setNoDelay(true);
     wisp.routeRequest(req, sock, head);
@@ -384,6 +406,7 @@ server.on("upgrade", (req, sock, head) => {
     });
 
     proxyReq.on('upgrade', (proxyRes, proxySock, proxyHead) => {
+      proxySock.on('error', () => sock.destroy());
       if (head && head.length) proxySock.unshift(head);
 
       sock.write(

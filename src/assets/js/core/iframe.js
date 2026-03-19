@@ -330,18 +330,27 @@ export function updateHistoryUI(activeTab, { currentUrl, canGoBack, canGoForward
     if (dom.searchInputNav) {
         const displayUrl = iframe.dataset.manualUrl || currentUrl || iframe.src;
         const decoded = decodeUrl(displayUrl);
+        let displayText = decoded;
+
+        try {
+            const formatter = window.WavesApp && window.WavesApp.getGameDisplayLabel;
+            if (typeof formatter === 'function') {
+                const custom = formatter(decoded);
+                if (custom) displayText = custom;
+            }
+        } catch (e) { }
 
         if (document.activeElement !== dom.searchInputNav) {
-            dom.searchInputNav.value = (decoded === 'about:blank' || !decoded) ? '' : decoded;
+            dom.searchInputNav.value = (displayText === 'about:blank' || !displayText) ? '' : displayText;
         }
 
         if (dom.lockIcon) {
-            const inputValue = dom.searchInputNav.value.trim().toLowerCase();
-            const hasProtocol = /^[a-z]+:\/\//i.test(inputValue);
+            const real = (decoded || '').trim().toLowerCase();
+            const hasProtocol = /^[a-z]+:\/\//i.test(real);
 
-            if (!inputValue || inputValue === 'about:blank' || !hasProtocol) {
+            if (!real || real === 'about:blank' || !hasProtocol) {
                 dom.lockIcon.className = 'fa-regular fa-magnifying-glass';
-            } else if (inputValue.startsWith('https://')) {
+            } else if (real.startsWith('https://')) {
                 dom.lockIcon.className = 'fa-regular fa-lock-keyhole';
             } else {
                 dom.lockIcon.className = 'fa-regular fa-unlock-keyhole';

@@ -22,7 +22,7 @@ export function initializeGame() {
       covers: "https://cdn.jsdelivr.net/gh/gn-math/covers@main"
     },
     squall: {
-      games: "/!!/https://squall.cc/games/games.json",
+      games: "/!!/https://squall.cc/all.json",
       assets: "https://squall.cc"
     },
     truffled: {
@@ -400,9 +400,12 @@ export function initializeGame() {
                 coverUrl: `/!cover!/${finalCover}`,
                 gameUrl: finalUrl,
                 isExternal: false,
-                featured: false
+                featured: false,
+                sourceKey: 'truffled'
               };
-            }).sort((a, b) => a.name.localeCompare(b.name));
+            })
+              .filter(game => !game.name.includes('[!]'))
+              .sort((a, b) => a.name.localeCompare(b.name));
             allGames.forEach(g => { g._nameLc = g.name.toLowerCase(); g._authorLc = (g.author || '').toLowerCase(); });
             return saveToCache(allGames);
           });
@@ -416,6 +419,7 @@ export function initializeGame() {
                 g.title &&
                 g.title !== '!!DMCA' &&
                 g.title !== '!!Game Request' &&
+                !g.title.includes('[!]') &&
                 !(g.location && g.location.includes('astra'))
               )
               .map(game => {
@@ -430,7 +434,8 @@ export function initializeGame() {
                   coverUrl: `/!cover!/${SOURCE_CONFIG.velara.assets}/${game.image}`,
                   gameUrl: finalUrl,
                   isExternal: !game.location && !!game.grdmca,
-                  featured: false
+                  featured: false,
+                  sourceKey: 'velara'
                 };
               })
               .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -445,18 +450,22 @@ export function initializeGame() {
         gameDataPromise = fetch(SOURCE_CONFIG.squall.games)
           .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
           .then(data => {
-            allGames = data.map(game => {
-              let finalUrl = game.link.startsWith('http') ? game.link : SOURCE_CONFIG.squall.assets + '/games/' + (game.link.startsWith('/') ? game.link.substring(1) : game.link);
-              let finalCover = game.cover.startsWith('http') ? game.cover : SOURCE_CONFIG.squall.assets + '/games/' + (game.cover.startsWith('/') ? game.cover.substring(1) : game.cover);
+            const games = data.games || [];
+            allGames = games.map(game => {
+              let finalUrl = game.url.startsWith('http') ? game.url : SOURCE_CONFIG.squall.assets + (game.url.startsWith('/') ? '' : '/') + game.url;
+              let finalCover = game.thumbnail.startsWith('http') ? game.thumbnail : SOURCE_CONFIG.squall.assets + (game.thumbnail.startsWith('/') ? '' : '/') + game.thumbnail;
               return {
                 id: game.name,
                 name: game.name,
                 coverUrl: `/!cover!/${finalCover}`,
                 gameUrl: finalUrl,
                 isExternal: false,
-                featured: false
+                featured: false,
+                sourceKey: 'squall'
               };
-            }).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            })
+              .filter(game => !game.name.includes('[!]'))
+              .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
             allGames.forEach(g => { g._nameLc = (g.name || "").toLowerCase(); g._authorLc = (g.author || '').toLowerCase(); });
             return saveToCache(allGames);
           });
@@ -473,10 +482,11 @@ export function initializeGame() {
                 coverUrl: `/!cover!/${zone.cover.replace('{COVER_URL}', SOURCE_CONFIG.gnMath.covers)}`,
                 gameUrl: isExternal ? zone.url : `https://gn-math.dev/?id=${zone.id}`,
                 isExternal: isExternal,
-                featured: zone.featured || false
+                featured: zone.featured || false,
+                sourceKey: 'gn-math'
               };
             })
-              .filter(game => !game.name.startsWith('[!]') && !game.name.startsWith('Chat Bot'))
+              .filter(game => !game.name.includes('[!]') && !game.name.startsWith('Chat Bot'))
               .sort((a, b) => (a.featured === b.featured) ? a.name.localeCompare(b.name) : (a.featured ? -1 : 1));
             allGames.forEach(g => { g._nameLc = g.name.toLowerCase(); g._authorLc = (g.author || '').toLowerCase(); });
             return saveToCache(allGames);
@@ -513,6 +523,37 @@ export function initializeGame() {
       sessionStorage.removeItem(getCacheKey());
     } catch { }
   }
+
+  window.WavesApp = window.WavesApp || {};
+  window.WavesApp.getGameDisplayLabel = function (realUrl) {
+    try {
+      if (!realUrl || !allGames || !allGames.length) return null;
+      let match = allGames.find(g => g.gameUrl === realUrl);
+
+      if (!match) {
+        try {
+          const u = new URL(realUrl);
+          if (u.hostname && u.hostname.includes('gn-math.dev')) {
+            let id = u.searchParams.get('id');
+            if (id) {
+              const numericMatch = id.match(/\d+/);
+              if (numericMatch) id = numericMatch[0];
+              match = allGames.find(g => g.sourceKey === 'gn-math' && String(g.id) === String(id));
+            }
+          }
+        } catch (e) {
+        }
+      }
+
+      if (!match) return null;
+      const source = (match.sourceKey || localStorage.getItem('gameSource') || 'gn-math').toLowerCase();
+      const rawName = match.name || match.id || realUrl;
+      const name = String(rawName).toLowerCase();
+      return `game: ${name} / source: ${source}`;
+    } catch (e) {
+      return null;
+    }
+  };
 
   function showGamesPage() {
     if (gameFadeTimer) {
