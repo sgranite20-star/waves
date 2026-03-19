@@ -12,11 +12,11 @@ while true; do
             break
             ;;
         cancel)
-            echo "setup aborted."
+            echo "setup aborted!"
             exit 0
             ;;
         *)
-            echo "please type 'ok' or 'cancel'."
+            echo "please type 'ok' or 'cancel'!"
             ;;
     esac
 done
