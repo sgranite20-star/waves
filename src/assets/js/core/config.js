@@ -1,5 +1,5 @@
 export const DEFAULT_BOOKMARKS = [
-    { name: 'github', url: 'https://github.com/' },
+    { name: 'ao3', url: 'https://archiveofourown.org/' },
     { name: 'movies', url: 'https://cineby.gd/', icon: 'fa-light fa-film' },
     { name: 'music', url: 'https://monochrome.tf/', icon: 'fa-light fa-music' },
     { name: 'tiktok', url: 'https://www.tiktok.com/' },
