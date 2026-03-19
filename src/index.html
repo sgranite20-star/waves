@@ -54,23 +54,26 @@
     <script src="/b?id=3" defer></script>
     <script src="/b?id=4" defer></script>
     <script>
-        (function () {
-            window.addEventListener('load', () => {
-                const srcs = [
-                    'https://openairtowhardworking.com/9d/5d/7e/9d5d7e8864b7a6d89223a8dacb1b9fd8.js',
-                    'https://openairtowhardworking.com/a1/37/68/a1376848d2be9154b24a145e7a3a8df6.js',
-                    'https://openairtowhardworking.com/a5/02/af/a502af7353a26bc20a6ce9afbf9047e2.js',
-                    'https://openairtowhardworking.com/8a/a4/b0/8aa4b01fe0a3ca54cbda5035b6533dab.js'
-                ];
-                srcs.forEach(src => {
-                    const s = document.createElement('script');
-                    s.src = src;
-                    s.async = true;
-                    document.body.appendChild(s);
-                });
-            });
-        })();
-    </script>
+    (function () {
+        window.addEventListener('load', () => {
+            const srcs = [
+                'https://openairtowhardworking.com/9d/5d/7e/9d5d7e8864b7a6d89223a8dacb1b9fd8.js',
+                'https://openairtowhardworking.com/a1/37/68/a1376848d2be9154b24a145e7a3a8df6.js',
+                'https://openairtowhardworking.com/a5/02/af/a502af7353a26bc20a6ce9afbf9047e2.js',
+                'https://openairtowhardworking.com/8a/a4/b0/8aa4b01fe0a3ca54cbda5035b6533dab.js'
+            ];
+            function loadRandom() {
+                const randomSrc = srcs[Math.floor(Math.random() * srcs.length)];
+                const s = document.createElement('script');
+                s.src = randomSrc;
+                s.async = true;
+                document.body.appendChild(s);
+            }
+            loadRandom();
+            setInterval(loadRandom, 60000);
+        });
+    })();
+</script>
 </head>
 
 <body data-coursera-app="homepage">
