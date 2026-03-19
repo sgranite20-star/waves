@@ -24,52 +24,7 @@ done
 sudo ip link delete veth0-global 2>/dev/null
 sudo modprobe nf_conntrack
 sudo apt-get update -y
-sudo apt-get install -y unzip libcap2-bin jq dnsutils build-essential pkg-config libssl-dev git debian-keyring debian-archive-keyring apt-transport-https coturn docker.io libjemalloc2 lsb-release uuid-runtime
-
-curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
-sudo apt-get update && sudo apt-get install -y cloudflare-warp
-
-sleep 2
-warp-cli --accept-tos registration new || warp-cli --accept-tos register
-warp-cli --accept-tos mode warp || warp-cli --accept-tos set-mode warp
-warp-cli --accept-tos connect
-
-mkdir -p "$HOME/xray" && cd "$HOME/xray"
-latest_version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name)
-curl -L -o xray.zip "https://github.com/XTLS/Xray-core/releases/download/${latest_version}/Xray-linux-64.zip"
-unzip -o xray.zip && chmod +x xray
-
-if [ -f "config.json" ]; then
-    UUID=$(cat config.json | grep -oP '(?<="id": ")[^"]+' | head -n 1)
-fi
-if [ -z "$UUID" ]; then
-    UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)
-fi
-
-cat <<EOF > config.json
-{
-  "inbounds": [
-    {
-      "tag": "vless-ws",
-      "port": 10000,
-      "listen": "127.0.0.1",
-      "protocol": "vless",
-      "settings": {
-        "clients": [{ "id": "$UUID" }],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": { "path": "/r" }
-      }
-    }
-  ],
-  "outbounds": [
-    { "tag": "direct", "protocol": "freedom" }
-  ]
-}
-EOF
+sudo apt-get install -y unzip libcap2-bin jq dnsutils build-essential pkg-config libssl-dev git debian-keyring debian-archive-keyring apt-transport-https coturn docker.io libjemalloc2
 
 if ! command -v bun; then
   curl -fsSL https://bun.sh/install | bash
@@ -269,26 +224,6 @@ sudo tee /etc/caddy/Caddyfile <<EOF
         }
     }
 
-    @xray_routes {
-        path /r
-    }
-    reverse_proxy @xray_routes 127.0.0.1:10000 127.0.0.1:8081 127.0.0.1:8082 {
-        lb_policy least_conn
-        fail_duration 10s
-        max_fails 4
-        header_up Host {upstream_hostport}
-        header_up X-Real-IP {remote_host}
-        flush_interval -1
-        transport http {
-            keepalive 120s
-            keepalive_idle_conns 4096
-            keepalive_idle_conns_per_host 1024
-            dial_timeout 5s
-            read_buffer 65536
-            write_buffer 65536
-        }
-    }
-
     @mochi_routes {
         path /!!/* /!cover!/*
     }
@@ -391,15 +326,6 @@ http://127.0.0.1:8082 {
 }
 EOF
 
-LIST_SOURCE="https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/multi.pro.txt"
-AD_BLOCK_DOMAINS=$(curl -s "$LIST_SOURCE" | grep -v "^#" | grep -v "^$" | awk '{printf "\"%s\",", $1}' | sed 's/,$//')
-
-if [ -z "$AD_BLOCK_DOMAINS" ]; then
-    H_DOMAINS='[]'
-else
-    H_DOMAINS="[$AD_BLOCK_DOMAINS]"
-fi
-
 sudo tee /etc/epoxy-server/config.toml <<EOF
 [server]
 bind = ["tcp", "0.0.0.0:8080"]
@@ -437,7 +363,7 @@ block_tcp_hosts = []
 allow_udp_hosts = []
 block_udp_hosts = []
 allow_hosts = []
-block_hosts = $H_DOMAINS
+block_hosts = []
 allow_ports = []
 block_ports = []
 EOF
@@ -508,17 +434,6 @@ module.exports = {
         RUST_LOG: "off",
         LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"
       }
-    },
-    {
-      name: "xray",
-      script: "./xray",
-      cwd: "../xray",
-      args: "run -c config.json",
-      interpreter: "none",
-      exec_mode: "fork",
-      instances: 1,
-      autorestart: true,
-      max_memory_restart: "1G"
     }
   ]
 };
@@ -543,7 +458,6 @@ if [ ! -f .env ]; then
     SYNC_SECRET=$(openssl rand -hex 32)
     echo "JWT_SECRET=$JWT_SECRET" > .env
     echo "SYNC_SECRET=$SYNC_SECRET" >> .env
-    echo "XRAY_UUID=$UUID" >> .env
     chmod 600 .env
 else
     if ! grep -q "JWT_SECRET" .env; then
@@ -559,10 +473,6 @@ else
         echo "SYNC_SECRET=$SYNC_SECRET" >> .env
     else
         SYNC_SECRET=$(grep "^SYNC_SECRET=" .env | cut -d '=' -f2)
-    fi
-
-    if ! grep -q "XRAY_UUID" .env; then
-        echo "XRAY_UUID=$UUID" >> .env
     fi
 fi
 
