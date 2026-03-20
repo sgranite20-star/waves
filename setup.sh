@@ -201,6 +201,7 @@ sudo docker run -d --name anubis \
     --restart unless-stopped \
     -e TARGET="http://127.0.0.1:3000" \
     -e OG_PASSTHROUGH="true" \
+    -e DIFFICULTY="2" \
     -e POLICY_FNAME=/botPolicies.yaml \
     -v /etc/anubis-policy.yaml:/botPolicies.yaml \
     ghcr.io/techarohq/anubis:latest
