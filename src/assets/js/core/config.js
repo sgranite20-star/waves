@@ -1,7 +1,7 @@
 export const DEFAULT_BOOKMARKS = [
     { name: 'ao3', url: 'https://archiveofourown.org/', icon: '/!cover!/https://archiveofourown.org/favicon.ico' },
     { name: 'movies', url: 'https://cineby.gd/', icon: 'fa-light fa-film' },
-    { name: 'music', url: 'https://monochrome.tf/', icon: 'fa-light fa-music' },
+    { name: 'music', url: 'https://monochrome.samidy.com/', icon: 'fa-light fa-music' },
     { name: 'tiktok', url: 'https://www.tiktok.com/' },
     { name: 'discord', url: 'https://discord.com/login/' },
 ];

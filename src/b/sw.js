@@ -928,19 +928,40 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const isNavigate = request.mode === 'navigate' || request.destination === 'document';
   
+  const url = new URL(request.url);
+
   if (isBlockedUrl(getAdblockTargetUrl(request.url), isNavigate)) {
-    return event.respondWith(new Response(':3', { 
+    const dest = request.destination;
+    const accept = request.headers.get('Accept') || '';
+    
+    let body = ':3';
+    let contentType = 'text/plain';
+
+    if (dest === 'script' || url.pathname.endsWith('.js')) {
+      body = 'window.ga=function(){return":3"};window.ga.q=[":3"];window.dataLayer=[":3"];window.dataLayer.push=function(){return":3"};window.fbq=function(){return":3"};window.googletag={cmd:{push:function(){return":3"}}};window._paq=[":3"];window._paq.push=function(){return":3"};';
+      contentType = 'application/javascript';
+    } else if (dest === 'image' || accept.includes('image/')) {
+      body = new Uint8Array([71, 73, 70, 56, 57, 97, 1, 0, 1, 0, 128, 0, 0, 0, 0, 0, 255, 255, 255, 33, 249, 4, 1, 0, 0, 0, 0, 44, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, 68, 1, 0, 59]);
+      contentType = 'image/gif';
+    } else if (isNavigate || dest === 'document') {
+      body = '<html><head><title>:3</title></head><body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:monospace;font-size:2rem;">:3</body></html>';
+      contentType = 'text/html';
+    } else if (accept.includes('application/json')) {
+      body = '{"status": ":3", "message": ":3"}';
+      contentType = 'application/json';
+    }
+
+    return event.respondWith(new Response(body, { 
       status: 200, 
       statusText: ':3',
       headers: { 
-        'Content-Type': request.destination === 'script' ? 'application/javascript' : 'text/plain',
+        'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*'
       } 
     }));
   }
 
   const preloadResponse = event.preloadResponse || null;
-  const url = new URL(request.url);
   const realUrl = resolveRealUrl(url);
 
   if (url.pathname.startsWith(MOCHI_PREFIX)) {
