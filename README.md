@@ -44,9 +44,7 @@ bun dev
 ## Credits
 
 - [GN-Math](https://github.com/gn-math/gn-math.github.io/) - Game Source
-- [Truffled](https://github.com/aukak/) - Game Source
 - [Velara](https://velara.cc/) - Game Source
-- [Bog](https://github.com/aukak/) - Ports for Hollow Knight, RE:RUN, and Touhou Mother
 - [Titanium Network](https://github.com/titaniumnetwork-dev/Ultraviolet/) - Ultraviolet
 - [Mercury Workshop](https://github.com/MercuryWorkshop/) - Scramjet, Epoxy, and Libcurl
 

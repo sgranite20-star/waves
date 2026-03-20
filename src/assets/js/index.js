@@ -221,10 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
             games: "https://squall.cc/games/games.json",
             assets: "https://squall.cc"
         },
-        truffled: {
-            games: "https://truffled.lol/js/json/g.json",
-            assets: "https://truffled.lol"
-        },
         velara: {
             games: "https://velara.cc/json/gg.json",
             assets: "https://velara.cc"
@@ -237,20 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const source = localStorage.getItem('gameSource') || 'gn-math';
         let fetchPromise;
 
-        if (source === 'truffled') {
-            fetchPromise = fetch(`/!!/${SOURCE_CONFIG.truffled.games}`)
-                .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
-                .then(data => (data.games || []).map(game => {
-                    let finalUrl = game.url.startsWith('http') ? game.url : SOURCE_CONFIG.truffled.assets + (game.url.startsWith('/') ? '' : '/') + game.url;
-                    let finalCover = game.thumbnail ? (game.thumbnail.startsWith('http') ? game.thumbnail : SOURCE_CONFIG.truffled.assets + (game.thumbnail.startsWith('/') ? '' : '/') + game.thumbnail) : '';
-                    return {
-                        name: game.name,
-                        gameUrl: finalUrl,
-                        isExternal: false,
-                        coverUrl: finalCover ? `/!!/${finalCover}` : null
-                    };
-                }));
-        } else if (source === 'velara') {
+        if (source === 'velara') {
             fetchPromise = fetch(`/!!/${SOURCE_CONFIG.velara.games}`)
                 .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
                 .then(data => data

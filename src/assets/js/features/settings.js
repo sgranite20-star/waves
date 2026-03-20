@@ -819,7 +819,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="settings-item">
                             <label>credits</label>
                              <p>gn-math - game source</p>
-                             <p>truffled - game source</p>
                              <p>velara - game source</p>
                              <p>squall - game source</p>
                              <p>bog - ports for hollow knight, re:run, and touhou mother</p>
@@ -873,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const allSearchEngineOptions = ['google', 'bing', 'duckduckgo', 'startpage', 'brave', 'mojeek', 'swisscows'];
         const allSiteCloakingOptions = ['coursera', 'none', 'google', 'google classroom', 'google docs', 'youtube', 'google drive', 'schoology', 'wikipedia', 'canva'];
         const allLinkCloakingOptions = ['none', 'about:blank', 'blob:'];
-        const allGameSourceOptions = ['gn-math', 'truffled', 'velara', 'squall'];
+        const allGameSourceOptions = ['gn-math', 'velara', 'squall'];
         const allThemeOptions = ['default', 'catppuccin', 'nord', 'rose pine', 'gruvbox', 'dracula', 'synthwave', 'tokyo night', 'everforest', 'kanagawa', 'solarized', 'sakura'];
 
         window.toggleSettingsMenu = function () {

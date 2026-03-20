@@ -25,10 +25,6 @@ export function initializeGame() {
       games: "/!!/https://squall.cc/all.json",
       assets: "https://squall.cc"
     },
-    truffled: {
-      games: "/!!/https://truffled.lol/js/json/g.json",
-      assets: "https://truffled.lol"
-    },
     velara: {
       games: "/!!/https://velara.cc/data/games.json",
       assets: "https://velara.cc"
@@ -386,30 +382,7 @@ export function initializeGame() {
         return data;
       };
 
-      if (source === 'truffled') {
-        gameDataPromise = fetch(SOURCE_CONFIG.truffled.games)
-          .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
-          .then(data => {
-            const games = data.games || [];
-            allGames = games.map(game => {
-              let finalUrl = game.url.startsWith('http') ? game.url : SOURCE_CONFIG.truffled.assets + (game.url.startsWith('/') ? '' : '/') + game.url;
-              let finalCover = game.thumbnail.startsWith('http') ? game.thumbnail : SOURCE_CONFIG.truffled.assets + (game.thumbnail.startsWith('/') ? '' : '/') + game.thumbnail;
-              return {
-                id: game.name,
-                name: game.name,
-                coverUrl: `/!cover!/${finalCover}`,
-                gameUrl: finalUrl,
-                isExternal: false,
-                featured: false,
-                sourceKey: 'truffled'
-              };
-            })
-              .filter(game => !game.name.includes('[!]'))
-              .sort((a, b) => a.name.localeCompare(b.name));
-            allGames.forEach(g => { g._nameLc = g.name.toLowerCase(); g._authorLc = (g.author || '').toLowerCase(); });
-            return saveToCache(allGames);
-          });
-      } else if (source === 'velara') {
+      if (source === 'velara') {
         gameDataPromise = fetch(SOURCE_CONFIG.velara.games)
           .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
           .then(data => {
