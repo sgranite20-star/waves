@@ -73,7 +73,7 @@ export function initializeLayout() {
         </div>
         <div class="omnibox">
             <i id="lockIcon" class="fa-regular fa-unlock-keyhole"></i>
-            <input type="text" id="searchInputt" placeholder="search or enter address" autocomplete="off">
+            <input type="text" id="searchInputt" placeholder="search or enter url (˶>⩊<˶)" autocomplete="off">
         </div>
         <div class="window-controls">
             <a id="home-btn" href="/"><i class="fa-regular fa-house-chimney-window"></i></a>
