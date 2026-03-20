@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let newTabInputEl = document.createElement('input');
     newTabInputEl.type = 'text';
     newTabInputEl.id = 'newTabInput';
-    newTabInputEl.placeholder = 'search or enter address';
+    newTabInputEl.placeholder = 'search or enter (˶>⩊<˶)';
     newTabInputEl.autocomplete = 'off';
 
     const SOURCE_CONFIG = {
@@ -731,7 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dom.searchInputNav) {
                 dom.searchInputNav.placeholder = activeTab.isLoading
                     ? "fetching url..."
-                    : "search or enter address";
+                    : "search or enter url (˶>⩊<˶)";
             }
 
             const isSplitViewActive = splitPair.left !== null &&
@@ -899,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newTabInputEl.dataset.mode = mode;
 
         if (mode === 'newTab') {
-            newTabInputEl.placeholder = "search or enter address";
+            newTabInputEl.placeholder = "search or enter url (˶>⩊<˶)";
             loadNewTabGameData();
             updateNewTabResults();
         } else if (mode === 'splitSelect') {

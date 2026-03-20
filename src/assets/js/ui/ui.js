@@ -248,7 +248,7 @@ export function hideLoading(tabId = null) {
 
   if (!tabId || tabId === activeId) {
     if (dom.searchInputNav) {
-      dom.searchInputNav.placeholder = "search or enter address";
+      dom.searchInputNav.placeholder = "search or enter url (˶>⩊<˶)";
     }
     document.title = originalTitle;
     setRefreshButtonState(false);
