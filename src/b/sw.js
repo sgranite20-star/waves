@@ -929,7 +929,14 @@ self.addEventListener("fetch", (event) => {
   const isNavigate = request.mode === 'navigate' || request.destination === 'document';
   
   if (isBlockedUrl(getAdblockTargetUrl(request.url), isNavigate)) {
-    return event.respondWith(new Response(':3', { status: 451, statusText: ':3' }));
+    return event.respondWith(new Response(':3', { 
+      status: 200, 
+      statusText: ':3',
+      headers: { 
+        'Content-Type': request.destination === 'script' ? 'application/javascript' : 'text/plain',
+        'Access-Control-Allow-Origin': '*'
+      } 
+    }));
   }
 
   const preloadResponse = event.preloadResponse || null;
