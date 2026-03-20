@@ -194,6 +194,18 @@ bots:
       Referer: "(?i).*\\.b-cdn\\.net.*"
     action: ALLOW
   - import: (data)/meta/default-config.yaml
+
+thresholds:
+  - name: allow-good-bots
+    expression: weight < 0
+    action: ALLOW
+  - name: challenge-browsers
+    expression: weight >= 0
+    action: CHALLENGE
+    challenge:
+      algorithm: fast
+      difficulty: 2
+      report_as: 2
 EOF
 
 sudo docker run -d --name anubis \
@@ -201,7 +213,6 @@ sudo docker run -d --name anubis \
     --restart unless-stopped \
     -e TARGET="http://127.0.0.1:3000" \
     -e OG_PASSTHROUGH="true" \
-    -e DIFFICULTY="2" \
     -e POLICY_FNAME=/botPolicies.yaml \
     -v /etc/anubis-policy.yaml:/botPolicies.yaml \
     ghcr.io/techarohq/anubis:latest
