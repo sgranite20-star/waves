@@ -218,11 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
             covers: "https://cdn.jsdelivr.net/gh/gn-math/covers@main"
         },
         squall: {
-            games: "https://squall.cc/games/games.json",
+            games: "https://squall.cc/all.json",
             assets: "https://squall.cc"
         },
         velara: {
-            games: "https://velara.cc/json/gg.json",
+            games: "https://velara.cc/data/games.json",
             assets: "https://velara.cc"
         }
     };
@@ -237,32 +237,38 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchPromise = fetch(`/!!/${SOURCE_CONFIG.velara.games}`)
                 .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
                 .then(data => data
-                    .filter(g => g.name !== '!!DMCA' && g.name !== '!!Game Request')
+                    .filter(g => g && g.title && g.title !== '!!DMCA' && g.title !== '!!Game Request' && !g.title.includes('[!]'))
                     .map(game => {
-                        let finalUrl = game.link;
-                        if (finalUrl && !finalUrl.startsWith('http')) finalUrl = SOURCE_CONFIG.velara.assets + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
-                        else if (game.grdmca) finalUrl = game.grdmca;
+                        let finalUrl = game.location;
+                        if (finalUrl && !finalUrl.startsWith('http')) {
+                            finalUrl = SOURCE_CONFIG.velara.assets + (finalUrl.startsWith('/') ? '' : '/') + finalUrl;
+                        } else if (game.grdmca) {
+                            finalUrl = game.grdmca;
+                        }
 
                         return {
-                            name: game.name,
+                            name: game.title,
                             gameUrl: finalUrl,
-                            isExternal: !game.link && !!game.grdmca,
+                            isExternal: !game.location && !!game.grdmca,
                             coverUrl: game.image ? `/!!/${SOURCE_CONFIG.velara.assets}/${game.image}` : null
                         };
                     }));
         } else if (source === 'squall') {
             fetchPromise = fetch(`/!!/${SOURCE_CONFIG.squall.games}`)
                 .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
-                .then(data => data.map(game => {
-                    let finalUrl = game.link.startsWith('http') ? game.link : SOURCE_CONFIG.squall.assets + '/games/' + (game.link.startsWith('/') ? game.link.substring(1) : game.link);
-                    let finalCover = game.cover.startsWith('http') ? game.cover : SOURCE_CONFIG.squall.assets + '/games/' + (game.cover.startsWith('/') ? game.cover.substring(1) : game.cover);
-                    return {
-                        name: game.name,
-                        gameUrl: finalUrl,
-                        isExternal: false,
-                        coverUrl: finalCover ? `/!!/${finalCover}` : null
-                    };
-                }));
+                .then(data => {
+                    const gamesList = data.games || [];
+                    return gamesList.map(game => {
+                        let finalUrl = game.url.startsWith('http') ? game.url : SOURCE_CONFIG.squall.assets + (game.url.startsWith('/') ? '' : '/') + game.url;
+                        let finalCover = game.thumbnail.startsWith('http') ? game.thumbnail : SOURCE_CONFIG.squall.assets + (game.thumbnail.startsWith('/') ? '' : '/') + game.thumbnail;
+                        return {
+                            name: game.name,
+                            gameUrl: finalUrl,
+                            isExternal: false,
+                            coverUrl: finalCover ? `/!!/${finalCover}` : null
+                        };
+                    });
+                });
         } else {
             fetchPromise = fetch(`/!!/${SOURCE_CONFIG.gnMath.zones}`)
                 .then(res => {
