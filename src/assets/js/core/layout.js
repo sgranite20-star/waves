@@ -73,7 +73,7 @@ export function initializeLayout() {
         </div>
         <div class="omnibox">
             <i id="lockIcon" class="fa-regular fa-unlock-keyhole"></i>
-            <input type="text" id="searchInputt" placeholder="search or enter url (˶>⩊<˶)" autocomplete="off">
+            <input type="text" id="searchInputt" placeholder="search or enter address" autocomplete="off">
         </div>
         <div class="window-controls">
             <a id="home-btn" href="/"><i class="fa-regular fa-house-chimney-window"></i></a>
@@ -174,8 +174,8 @@ export function initializeLayout() {
 export function initializeFall() {
     const CONTAINER_ID = 'fall-container';
     const IMAGE_SOURCES = [
-        '/assets/images/peaks/chii.png',
-        '/assets/images/peaks/pochi.png'
+        '/assets/images/peaks/chii.avif',
+        '/assets/images/peaks/pochi.avif'
     ];
     const SPAWN_RATE = 300;
     const MAX_PARTICLES = 40;
