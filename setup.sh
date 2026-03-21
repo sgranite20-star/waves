@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "the setup proccess is about to start, if you have any issues join discord.gg/dJvdkPRheV for support!"
 echo ""
 echo "type 'ok' to continue or 'cancel' to abort."
@@ -99,17 +101,16 @@ if ! grep -q "^\* hard nofile" /etc/security/limits.conf; then
   echo "* hard nofile 1048576" | sudo tee -a /etc/security/limits.conf
 fi
 
-if [ ! -d "$HOME/epoxy-tls" ]; then
-    git clone https://github.com/MercuryWorkshop/epoxy-tls.git "$HOME/epoxy-tls"
+if [ -d "nuru" ]; then
+    cd nuru
+    RUSTFLAGS="-C target-cpu=native" "$HOME/.cargo/bin/cargo" build --release
+    sudo cp target/release/nuru /usr/local/bin/nuru
+    sudo setcap cap_net_bind_service=+ep /usr/local/bin/nuru
+    cd ..
+else
+    echo "nuru directory not found!"
+    exit 1
 fi
-cd "$HOME/epoxy-tls"
-git fetch && git checkout . && git pull
-if ! grep -q "^\[profile.release\]" Cargo.toml; then
-    printf "\n[profile.release]\nlto = \"fat\"\ncodegen-units = 1\npanic = \"abort\"\nstrip = true\nopt-level = 3\n" >> Cargo.toml
-fi
-RUSTFLAGS="-C target-cpu=native" "$HOME/.cargo/bin/cargo" build --release
-sudo cp target/release/epoxy-server /usr/local/bin/epoxy-server
-sudo setcap cap_net_bind_service=+ep /usr/local/bin/epoxy-server
 
 PUBLIC_IP=$(curl -s4 ifconfig.me)
 [ -z "$PUBLIC_IP" ] && PUBLIC_IP=$(dig +short txt ch whoami.cloudflare @1.0.0.1 | tr -d '"')
@@ -142,7 +143,7 @@ if ! systemctl is-active coturn; then
     sudo turnserver -c /etc/turnserver.conf -o -v -z &
 fi
 
-cd "$HOME/waves"
+cd "$PROJECT_ROOT" || { echo "run this in the waves directory!"; exit 1; }
 export PATH="$HOME/.bun/bin:$PATH"
 export IP="$PUBLIC_IP"
 
@@ -194,18 +195,6 @@ bots:
       Referer: "(?i).*\\.b-cdn\\.net.*"
     action: ALLOW
   - import: (data)/meta/default-config.yaml
-
-thresholds:
-  - name: allow-good-bots
-    expression: weight < 0
-    action: ALLOW
-  - name: challenge-browsers
-    expression: weight >= 0
-    action: CHALLENGE
-    challenge:
-      algorithm: fast
-      difficulty: 2
-      report_as: 2
 EOF
 
 sudo docker run -d --name anubis \
@@ -219,7 +208,7 @@ sudo docker run -d --name anubis \
 
 bun run build
 
-sudo mkdir -p /etc/epoxy-server /etc/systemd/system/caddy.service.d
+sudo mkdir -p /etc/nuru /etc/systemd/system/caddy.service.d
 
 sudo tee /etc/systemd/system/caddy.service.d/override.conf <<EOF
 [Service]
@@ -247,10 +236,10 @@ sudo tee /etc/caddy/Caddyfile <<EOF
 
     encode zstd gzip
 
-    @epoxy_routes {
+    @nuru_routes {
         path /w/*
     }
-    reverse_proxy @epoxy_routes 127.0.0.1:8080 127.0.0.1:8081 127.0.0.1:8082 {
+    reverse_proxy @nuru_routes 127.0.0.1:8080 127.0.0.1:8081 127.0.0.1:8082 {
         lb_policy least_conn
         fail_duration 10s
         max_fails 4
@@ -369,47 +358,11 @@ http://127.0.0.1:8082 {
 }
 EOF
 
-sudo tee /etc/epoxy-server/config.toml <<EOF
-[server]
-bind = ["tcp", "0.0.0.0:8080"]
-transport = "websocket"
-resolve_ipv6 = false
-tcp_nodelay = true
-file_raw_mode = false
-use_real_ip_headers = true
-non_ws_response = "hii! You should join discord.gg/dJvdkPRheV :3"
-max_message_size = 1048576
-log_level = "OFF"
-runtime = "multithread"
-stats_endpoint = "/stats"
-[wisp]
-allow_wsproxy = true
-buffer_size = 65536
-prefix = "/w"
-wisp_v2 = true
-extensions = ["udp", "motd"]
-password_extension_required = false
-certificate_extension_required = false
-[stream]
-tcp_nodelay = true
-buffer_size = 524288
-allow_udp = true
-allow_wsproxy_udp = false
-dns_servers = ["1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"]
-allow_direct_ip = true
-allow_loopback = true
-allow_multicast = true
-allow_global = true
-allow_non_global = true
-allow_tcp_hosts = []
-block_tcp_hosts = []
-allow_udp_hosts = []
-block_udp_hosts = []
-allow_hosts = []
-block_hosts = []
-allow_ports = []
-block_ports = []
-EOF
+if [ ! -f "$PROJECT_ROOT/nuru/config.toml" ]; then
+    echo "nuru config not found at $PROJECT_ROOT/nuru/config.toml !"
+    exit 1
+fi
+sudo cp "$PROJECT_ROOT/nuru/config.toml" /etc/nuru/config.toml
 
 "$HOME/.bun/bin/pm2" stop all
 "$HOME/.bun/bin/pm2" delete all
@@ -466,9 +419,9 @@ module.exports = {
       }
     },
     {
-      name: "epoxy-server",
-      script: "/usr/local/bin/epoxy-server", 
-      args: ["/etc/epoxy-server/config.toml"], 
+      name: "nuru",
+      script: "/usr/local/bin/nuru", 
+      args: ["/etc/nuru/config.toml"], 
       exec_mode: "fork",
       instances: 1,
       autorestart: true,

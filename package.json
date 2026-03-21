@@ -1,6 +1,6 @@
 {
   "name": "waves",
-  "version": "3.5.8",
+  "version": "3.5.7",
   "description": "a really cool web-proxy",
   "type": "module",
   "packageManager": "bun@latest",
@@ -29,8 +29,7 @@
     "express": "^5.0.0-beta.3",
     "express-rate-limit": "^7.3.1",
     "helmet": "^7.1.0",
-    "lru-cache": "^11.1.0",
-    "wisp-server-node": "1.1.7"
+    "lru-cache": "^11.1.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.22",

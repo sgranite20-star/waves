@@ -6,7 +6,6 @@ import { createServer, request } from "http";
 import express from "express";
 import compression from "compression";
 import helmet from "helmet";
-import wisp from "wisp-server-node";
 import { LRUCache } from "lru-cache";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
@@ -17,7 +16,6 @@ process.env.UV_THREADPOOL_SIZE = 32;
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const packageJsonPath = path.resolve("package.json");
-const notificationsPath = path.resolve("notifications.json");
 
 const CACHING_ENABLED = NODE_ENV === 'production';
 const fileCache = CACHING_ENABLED ? new LRUCache({
@@ -107,8 +105,6 @@ const apiLimiter = rateLimit({
   message: { error: "too many requests, please try again later!" }
 });
 
-let cachedNotifications = [];
-let notificationError = null;
 let location = "unknown";
 
 fetch("https://get.geojs.io/v1/ip/geo.json")
@@ -120,16 +116,10 @@ fetch("https://get.geojs.io/v1/ip/geo.json")
   })
   .catch(err => console.error("failed to fetch location:", err.message));
 
-try {
-  const data = fs.readFileSync(notificationsPath, "utf8");
-  cachedNotifications = JSON.parse(data);
-} catch (err) {
-  notificationError = { error: "unable to load notification :(" };
-}
-
 const __dirname = process.cwd();
 const srcPath = path.join(__dirname, NODE_ENV === 'production' ? 'dist' : 'src');
 const publicPath = path.join(__dirname, "public");
+
 const app = express();
 app.set("trust proxy", 1);
 const server = createServer(app);
@@ -147,7 +137,31 @@ app.use(helmet({
 }));
 
 app.use((req, res, next) => {
-  if (NODE_ENV === 'development' && (req.url.startsWith('/!!/') || req.url.startsWith('/!cover!/'))) {
+  if (NODE_ENV === 'development' && req.url.startsWith('/w/')) {
+    const options = {
+      hostname: '127.0.0.1',
+      port: 8080,
+      path: req.url,
+      method: req.method,
+      headers: req.headers,
+    };
+
+    const proxyReq = request(options, (proxyRes) => {
+      proxyRes.on('error', () => res.destroy());
+      res.on('error', () => proxyRes.destroy());
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on('error', (e) => {
+      console.error(`nuru forwarding failed: ${e.message}`);
+      if (!res.headersSent) res.status(502).send("make sure nuru is running!");
+      else res.destroy();
+    });
+
+    req.on('error', () => proxyReq.destroy());
+    req.pipe(proxyReq);
+  } else if (NODE_ENV === 'development' && (req.url.startsWith('/!!/') || req.url.startsWith('/!cover!/'))) {
     const options = {
       hostname: '127.0.0.1',
       port: 4000,
@@ -393,9 +407,30 @@ app.use((_req, res) => {
 
 server.on("upgrade", (req, sock, head) => {
   sock.on('error', () => { /* ignore */ });
-  if (req.url.startsWith("/w/")) {
-    sock.setNoDelay(true);
-    wisp.routeRequest(req, sock, head);
+  if (NODE_ENV === 'development' && req.url.startsWith("/w/")) {
+    const proxyReq = request({
+      hostname: '127.0.0.1',
+      port: 8080,
+      path: req.url,
+      method: 'GET',
+      headers: req.headers
+    });
+
+    proxyReq.on('upgrade', (proxyRes, proxySock, proxyHead) => {
+      proxySock.on('error', () => sock.destroy());
+      if (head && head.length) proxySock.unshift(head);
+
+      sock.write(
+        `HTTP/${proxyRes.httpVersion} ${proxyRes.statusCode} ${proxyRes.statusMessage}\r\n` +
+        Object.keys(proxyRes.headers).map(k => `${k}: ${proxyRes.headers[k]}`).join('\r\n') +
+        '\r\n\r\n'
+      );
+
+      sock.pipe(proxySock).pipe(sock);
+    });
+
+    proxyReq.on('error', () => sock.destroy());
+    proxyReq.end();
   } else if (NODE_ENV === 'development' && (req.url.startsWith("/!!/") || req.url.startsWith("/!cover!/"))) {
     const proxyReq = request({
       hostname: '127.0.0.1',
