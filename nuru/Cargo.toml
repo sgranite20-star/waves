@@ -1,6 +1,6 @@
 [package]
 name = "nuru"
-version = "0.0.1"
+version = "2.0.0"
 edition = "2021"
 
 [dependencies]
@@ -51,10 +51,8 @@ tikv-jemallocator = "0.6.0"
 
 [features]
 default = ["toml"]
-
 yaml = ["dep:serde_yaml"]
 toml = ["dep:toml"]
-
 twisp = ["dep:pty-process", "dep:libc", "dep:shell-words"]
 speed-limit = ["dep:async-speed-limit"]
 tokio-console = ["dep:console-subscriber"]

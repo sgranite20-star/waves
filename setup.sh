@@ -195,6 +195,18 @@ bots:
       Referer: "(?i).*\\.b-cdn\\.net.*"
     action: ALLOW
   - import: (data)/meta/default-config.yaml
+
+thresholds:
+  - name: allow-good-bots
+    expression: weight < 0
+    action: ALLOW
+  - name: challenge-browsers
+    expression: weight >= 0
+    action: CHALLENGE
+    challenge:
+      algorithm: fast
+      difficulty: 2
+      report_as: 2
 EOF
 
 sudo docker run -d --name anubis \
