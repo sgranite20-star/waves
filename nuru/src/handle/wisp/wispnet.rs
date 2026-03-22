@@ -165,7 +165,7 @@ async fn copy_wisp(
 
 pub async fn handle_stream(
 	mux: MuxStream<WispStreamWrite>,
-	wisp: MuxStream<WispStreamWrite>,
+	wisp: "wss://wisp.mercurywork.shop/",
 	mux_id: String,
 	uuid: Uuid,
 	resolved_stream: ConnectPacket,
